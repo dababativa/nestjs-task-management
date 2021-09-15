@@ -1,78 +1,52 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Task, TaskStatus } from './task.model';
-import { v4 as uuid } from 'uuid';
+import { TaskStatus } from './task-status.enum';
 import { CreateTaskDTO } from './dto/create-task.dto';
 import { GetTasksFilterDTO } from './dto/get-tasks-filter.dto';
+import { TasksRepository } from './tasks.repository';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Task } from './task.entity';
 
 @Injectable()
 export class TasksService {
-  // Attributes
-  private tasks: Task[] = [];
+  constructor(
+    @InjectRepository(TasksRepository)
+    private tasksRepository: TasksRepository,
+  ) {}
 
-  // Methods
+  // // Methods
 
-  // returns all tasks in the task array
-  getAllTasks(): Task[] {
-    return this.tasks;
-  }
-
-  getTasksWithFilter(filterDTO: GetTasksFilterDTO): Task[] {
-    const { status, search } = filterDTO;
-
-    let tasks = this.getAllTasks();
-
-    // status branch
-    if (status) {
-      tasks = tasks.filter((task) => task.status === status);
-    }
-    // search branch
-    if (search) {
-      tasks = tasks.filter((task) => {
-        if (task.title.includes(search) || task.description.includes(search)) {
-          return true;
-        }
-        return false;
-      });
-    }
-    // return
-    return tasks;
+  // // returns all tasks in the task array
+  getTasks(filterDto: GetTasksFilterDTO): Promise<Task[]> {
+    return this.tasksRepository.getTasks(filterDto);
   }
 
   // returns a tasks with the same id
-  getTaskById(id: string): Task {
-    // find task
-    const task = this.tasks.find((task) => task.id === id);
-    //if task not found return 404
-    if (!task) {
+  async getTaskById(id:string):Promise<Task>{
+    const task = await this.tasksRepository.findOne(id)
+    if(!task){
       throw new NotFoundException(`Task with id ${id} not found`);
     }
-
     return task;
   }
 
   // creates a task, pushes into the array and returns it
-  createTask(createTaskDTO: CreateTaskDTO): Task {
-    const { title, description } = createTaskDTO;
-    const task: Task = {
-      id: uuid(),
-      title,
-      description,
-      status: TaskStatus.OPEN,
-    };
-    this.tasks.push(task);
-    return task;
+  createTask(createTaskDto: CreateTaskDTO): Promise<Task> {
+    return this.tasksRepository.createTask(createTaskDto)
   }
 
   // filters the current tasks list to exclude the one we want to delete
-  deleteTask(id: string): void {
-    const task = this.getTaskById(id)
-    this.tasks = this.tasks.filter((task) => task.id !== id);
+  async deleteTask(id: string): Promise<void> {
+    const result = await this.tasksRepository.delete(id)
+    if(result.affected === 0 ){
+      throw new NotFoundException(`Task with id ${id} not found`);
+    }
   }
 
   // patch task
-  updateTaskStatus(id: string, status: TaskStatus): Task {
-    const task = this.getTaskById(id);
+  async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
+    const task = await this.getTaskById(id);
     task.status = status;
+    await this.tasksRepository.save(task);
     return task;
   }
 }

@@ -5,6 +5,7 @@ import { GetTasksFilterDTO } from './dto/get-tasks-filter.dto';
 import { TasksRepository } from './tasks.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Task } from './task.entity';
+import { User } from 'src/auth/user.entity';
 
 @Injectable()
 export class TasksService {
@@ -30,8 +31,8 @@ export class TasksService {
   }
 
   // creates a task, pushes into the array and returns it
-  createTask(createTaskDto: CreateTaskDTO): Promise<Task> {
-    return this.tasksRepository.createTask(createTaskDto)
+  createTask(createTaskDto: CreateTaskDTO, user: User): Promise<Task> {
+    return this.tasksRepository.createTask(createTaskDto, user)
   }
 
   // filters the current tasks list to exclude the one we want to delete
